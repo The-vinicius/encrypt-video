@@ -22,9 +22,30 @@ async def encrypt(request, file: UploadedFile = File(...), key: str = Form(...))
             if not chunk:
                 break
             out_file.write(cipher.encrypt(chunk))
-
     # Open the encrypted file and return it with a FileResponse
     f = open(file.name + '.encrypted', 'rb')
     response = FileResponse(f, content_type='application/octet-stream')
     return response
 
+
+@api.post('decrypt')
+async def decrypt(request, file: UploadedFile = File(...), key: str = Form(...), name: str = Form(...)):
+    key = key.encode()
+
+    cipher = AES.new(key, AES.MODE_EAX)
+
+    # Open a new file in binary mode for writing
+    with open(name+'.mp4', 'wb') as out_file:
+        # Read and decrypt the data in chunks
+        while True:
+            chunk = file.read(1024)
+            if not chunk:
+                break
+            out_file.write(cipher.decrypt(chunk))
+
+    # Open the decrypted file and return it with a FileResponse
+    f = open(name+'.mp4', 'rb')
+    response = FileResponse(f, content_type='application/octet-stream')
+    breakpoint()
+    return response
+    
