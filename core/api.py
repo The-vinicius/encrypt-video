@@ -14,14 +14,16 @@ async def encrypt(request, file: UploadedFile = File(...), key: str = Form(...))
 
     # Create a Cipher object using the key
     cipher = AES.new(key, AES.MODE_EAX)
-
+    ciphertext = b''
+    while True:
+        chunk = file.read(1048576)
+        if not chunk:
+            break
+        ciphertext += cipher.encrypt(chunk)
     # Encrypt the file and write the encrypted data to a new file
-    with open(file.name + '.encrypted', 'wb') as out_file:
-        while True:
-            chunk = file.read(1024)
-            if not chunk:
-                break
-            out_file.write(cipher.encrypt(chunk))
+    #ciphertext, tag = cipher.encrypt_and_digest(file.read()) 
+    with open(file.name+'.encrypted', 'wb') as f:
+        [f.write(x) for x in (cipher.nonce, cipher.digest(), ciphertext)]
     # Open the encrypted file and return it with a FileResponse
     f = open(file.name + '.encrypted', 'rb')
     response = FileResponse(f, content_type='application/octet-stream')
@@ -32,20 +34,15 @@ async def encrypt(request, file: UploadedFile = File(...), key: str = Form(...))
 async def decrypt(request, file: UploadedFile = File(...), key: str = Form(...), name: str = Form(...)):
     key = key.encode()
 
-    cipher = AES.new(key, AES.MODE_EAX)
+    nonce, tag, ciphertext = [ file.read(x) for x in (16, 16, -1) ]
 
     # Open a new file in binary mode for writing
-    with open(name+'.mp4', 'wb') as out_file:
-        # Read and decrypt the data in chunks
-        while True:
-            chunk = file.read(1024)
-            if not chunk:
-                break
-            out_file.write(cipher.decrypt(chunk))
-
+    cipher = AES.new(key, AES.MODE_EAX, nonce)
+    data = cipher.decrypt_and_verify(ciphertext, tag)
+    with open(name+'.mp4', 'wb') as f:
+        f.write(data)
     # Open the decrypted file and return it with a FileResponse
     f = open(name+'.mp4', 'rb')
     response = FileResponse(f, content_type='application/octet-stream')
-    breakpoint()
     return response
     
