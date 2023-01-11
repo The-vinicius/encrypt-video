@@ -2,15 +2,20 @@ from ninja import NinjaAPI, File, Form
 from ninja.files import UploadedFile
 from Cryptodome.Cipher import AES
 from django.http import FileResponse
+from pydantic import BaseModel, Field
+from typing import Optional
 
 
 api = NinjaAPI()
 
 
+class PassKey(BaseModel):
+    key: str = Field(..., max_length=16, min_length=16)
+
 @api.post('encrypt')
-async def encrypt(request, file: UploadedFile = File(...), key: str = Form(...)):
+async def encrypt(request, file: UploadedFile = File(...), passkey: PassKey = Form(...)):
     # Read the key and encode it as bytes
-    key = key.encode()
+    key = passkey.key.encode()
 
     # Create a Cipher object using the key
     cipher = AES.new(key, AES.MODE_EAX)
@@ -33,7 +38,6 @@ async def encrypt(request, file: UploadedFile = File(...), key: str = Form(...))
 @api.post('decrypt')
 async def decrypt(request, file: UploadedFile = File(...), key: str = Form(...), name: str = Form(...)):
     key = key.encode()
-
     nonce, tag, ciphertext = [ file.read(x) for x in (16, 16, -1) ]
 
     # Open a new file in binary mode for writing
