@@ -4,6 +4,7 @@ from Cryptodome.Cipher import AES
 from django.http import FileResponse
 from pydantic import BaseModel, Field
 from typing import Optional
+from tempfile import NamedTemporaryFile
 
 
 api = NinjaAPI()
@@ -25,13 +26,13 @@ async def encrypt(request, file: UploadedFile = File(...), passkey: PassKey = Fo
         if not chunk:
             break
         ciphertext += cipher.encrypt(chunk)
-    # Encrypt the file and write the encrypted data to a new file
-    #ciphertext, tag = cipher.encrypt_and_digest(file.read()) 
-    with open(file.name+'.encrypted', 'wb') as f:
+
+    with NamedTemporaryFile(prefix=file.name, suffix='.encrypted') as f:
+        # Encrypt the file and write the encrypted data to a new file
+        #ciphertext, tag = cipher.encrypt_and_digest(file.read()) 
         [f.write(x) for x in (cipher.nonce, cipher.digest(), ciphertext)]
-    # Open the encrypted file and return it with a FileResponse
-    f = open(file.name + '.encrypted', 'rb')
-    response = FileResponse(f, content_type='application/octet-stream')
+        # Open the encrypted file and return it with a FileResponse
+        response = FileResponse(f, content_type='application/octet-stream')
     return response
 
 
