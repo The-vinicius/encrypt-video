@@ -5,6 +5,7 @@ from django.http import FileResponse
 from pydantic import BaseModel, Field
 from typing import Optional
 from tempfile import NamedTemporaryFile
+import zipfile
 
 
 api = NinjaAPI()
@@ -20,19 +21,25 @@ async def encrypt(request, file: UploadedFile = File(...), passkey: PassKey = Fo
 
     # Create a Cipher object using the key
     cipher = AES.new(key, AES.MODE_EAX)
-    ciphertext = b''
-    while True:
-        chunk = file.read(1048576)
-        if not chunk:
-            break
-        ciphertext += cipher.encrypt(chunk)
+    with open(file.name+'.bin', 'wb') as f:
+        while True:
+            chunk = file.read(1048576)
+            if not chunk:
+                break
+            f.write(cipher.encrypt(chunk))
 
-    with NamedTemporaryFile(prefix=file.name, suffix='.encrypted') as f:
-        # Encrypt the file and write the encrypted data to a new file
-        #ciphertext, tag = cipher.encrypt_and_digest(file.read()) 
-        [f.write(x) for x in (cipher.nonce, cipher.digest(), ciphertext)]
-        # Open the encrypted file and return it with a FileResponse
-        response = FileResponse(f, content_type='application/octet-stream')
+    with open('key', 'wb') as f:
+        [f.write(x) for x in (cipher.nonce, cipher.digest())]
+
+    files = [file.name+'.bin', 'key']
+    # Create the ZIP file
+    with zipfile.ZipFile(file.name+'.zip', 'w') as myzip:
+        for f in files:
+            myzip.write(f)
+
+    f = open(file.name+'.zip', 'rb')
+
+    response = FileResponse(f, content_type='application/octet-stream')
     return response
 
 
