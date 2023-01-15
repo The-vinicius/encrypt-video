@@ -18,34 +18,38 @@ class PassKey(BaseModel):
 async def encrypt(request, file: UploadedFile = File(...), passkey: PassKey = Form(...)):
     # Read the key and encode it as bytes
     key = passkey.key.encode()
+    # name files
+    vname = './encrypt/'+file.name+'.bin'
+    kname = './encrypt/key.bin'
+    zname = './zips/'+file.name+'.zip'
 
     # Create a Cipher object using the key
     cipher = AES.new(key, AES.MODE_EAX)
-    with open(file.name+'.bin', 'wb') as f:
+    with open(vname, 'wb') as f:
         while True:
             chunk = file.read(1048576)
             if not chunk:
                 break
             f.write(cipher.encrypt(chunk))
 
-    with open('key.bin', 'wb') as f:
+    with open(kname, 'wb') as f:
         [f.write(x) for x in (cipher.nonce, cipher.digest())]
 
-    files = [file.name+'.bin', 'key.bin']
+    files = [vname, kname]
     # Create the ZIP file
-    with zipfile.ZipFile(file.name+'.zip', 'w') as myzip:
+    with zipfile.ZipFile(zname, 'w') as myzip:
         for f in files:
             myzip.write(f)
 
-    f = open(file.name+'.zip', 'rb')
+    f = open(zname, 'rb')
 
     response = FileResponse(f, content_type='application/octet-stream')
     return response
 
 
 @api.post('decrypt')
-async def decrypt(request, files: List[UploadedFile] = File(...), passkey: PassKey = Form(...), name: str = Form(...)):
-    key = PassKey.key.encode()
+async def decrypt(request, files: List[UploadedFile] = File(...), passkey: str = Form(...), name: str = Form(...)):
+    key = passkey.encode()
     nonce, tag = [ files[1].read(x) for x in (16, 16) ]
 
     # Open a new file in binary mode for writing
