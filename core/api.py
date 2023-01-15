@@ -44,8 +44,8 @@ async def encrypt(request, file: UploadedFile = File(...), passkey: PassKey = Fo
 
 
 @api.post('decrypt')
-async def decrypt(request, files: List[UploadedFile] = File(...), passkey: str = Form(...), name: str = Form(...)):
-    key = passkey.encode()
+async def decrypt(request, files: List[UploadedFile] = File(...), passkey: PassKey = Form(...), name: str = Form(...)):
+    key = PassKey.key.encode()
     nonce, tag = [ files[1].read(x) for x in (16, 16) ]
 
     # Open a new file in binary mode for writing
