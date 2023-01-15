@@ -14,6 +14,11 @@ api = NinjaAPI()
 class PassKey(BaseModel):
     key: str = Field(..., max_length=16, min_length=16)
 
+
+class NameKey(PassKey):
+    name: str = None
+
+
 @api.post('encrypt')
 async def encrypt(request, file: UploadedFile = File(...), passkey: PassKey = Form(...)):
     # Read the key and encode it as bytes
@@ -47,15 +52,16 @@ async def encrypt(request, file: UploadedFile = File(...), passkey: PassKey = Fo
     return response
 
 
+
 @api.post('decrypt')
-async def decrypt(request, files: List[UploadedFile] = File(...), passkey: str = Form(...), name: str = Form(...)):
-    key = passkey.encode()
+async def decrypt(request, files: List[UploadedFile] = File(...), namekey: NameKey = Form(...)):
+    key = namekey.key.encode()
     nonce, tag = [ files[1].read(x) for x in (16, 16) ]
 
     # Open a new file in binary mode for writing
     cipher = AES.new(key, AES.MODE_EAX, nonce)
 
-    with open(name+'.mp4', 'wb') as f:
+    with open(namekey.name+'.mp4', 'wb') as f:
         while True:
             chunk = files[0].read(1048576)
             if not chunk:
@@ -67,6 +73,6 @@ async def decrypt(request, files: List[UploadedFile] = File(...), passkey: str =
     with open(name+'.mp4', 'wb') as f:
         f.write(data) """
     # Open the decrypted file and return it with a FileResponse
-    f = open(name+'.mp4', 'rb')
+    f = open(namekey.name+'.mp4', 'rb')
     response = FileResponse(f, content_type='application/octet-stream')
     return response
