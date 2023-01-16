@@ -70,7 +70,10 @@ async def decrypt(request, files: List[UploadedFile] = File(...), namekey: NameK
             if not chunk:
                 break
             f.write(cipher.decrypt(chunk))
-    cipher.verify(tag)
+    try:
+        cipher.verify(tag)
+    except ValueError:
+        return {'error': 'incorrect key'}
 
     """data = cipher.decrypt_and_verify(ciphertext, tag)
     with open(name+'.mp4', 'wb') as f:
