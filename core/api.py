@@ -16,7 +16,7 @@ class PassKey(BaseModel):
 
 
 class NameKey(PassKey):
-    name: str = None
+    name: str
 
 
 @api.post('encrypt')
@@ -56,12 +56,15 @@ async def encrypt(request, file: UploadedFile = File(...), passkey: PassKey = Fo
 @api.post('decrypt')
 async def decrypt(request, files: List[UploadedFile] = File(...), namekey: NameKey = Form(...)):
     key = namekey.key.encode()
+    # name file video decrypt
+    nvideo = './videos/'+namekey.name+'.mp4'
+    # get nonce end tag in key.bin
     nonce, tag = [ files[1].read(x) for x in (16, 16) ]
 
     # Open a new file in binary mode for writing
     cipher = AES.new(key, AES.MODE_EAX, nonce)
 
-    with open(namekey.name+'.mp4', 'wb') as f:
+    with open(nvideo, 'wb') as f:
         while True:
             chunk = files[0].read(1048576)
             if not chunk:
@@ -73,6 +76,6 @@ async def decrypt(request, files: List[UploadedFile] = File(...), namekey: NameK
     with open(name+'.mp4', 'wb') as f:
         f.write(data) """
     # Open the decrypted file and return it with a FileResponse
-    f = open(namekey.name+'.mp4', 'rb')
+    f = open(nvideo, 'rb')
     response = FileResponse(f, content_type='application/octet-stream')
     return response
