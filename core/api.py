@@ -5,10 +5,18 @@ from django.http import FileResponse
 from pydantic import BaseModel, Field
 from typing import Optional, List
 from tempfile import NamedTemporaryFile
+from ninja.security import django_auth, HttpBearer
+from decouple import config
 import zipfile
 
 
 api = NinjaAPI()
+
+
+class AuthBearer(HttpBearer):
+    def authenticate(self, request, token):
+        if token == config('KEY'):
+            return token
 
 
 class PassKey(BaseModel):
@@ -19,7 +27,7 @@ class NameKey(PassKey):
     name: str
 
 
-@api.post('encrypt')
+@api.post('encrypt', auth=AuthBearer())
 async def encrypt(request, file: UploadedFile = File(...), passkey: PassKey = Form(...)):
     # Read the key and encode it as bytes
     key = passkey.key.encode()
@@ -53,7 +61,7 @@ async def encrypt(request, file: UploadedFile = File(...), passkey: PassKey = Fo
 
 
 
-@api.post('decrypt')
+@api.post('decrypt', auth=AuthBearer())
 async def decrypt(request, files: List[UploadedFile] = File(...), namekey: NameKey = Form(...)):
     key = namekey.key.encode()
     # name file video decrypt
