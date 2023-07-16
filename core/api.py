@@ -7,7 +7,7 @@ from typing import Optional, List
 from tempfile import NamedTemporaryFile
 from ninja.security import django_auth, HttpBearer
 from decouple import config
-import zipfile
+import tempfile
 
 
 api = NinjaAPI()
@@ -32,7 +32,7 @@ async def encrypt(request, file: UploadedFile = File(...), passkey: PassKey = Fo
     # Read the key and encode it as bytes
     key = passkey.key.encode()
     # name files
-    vname = './encrypt/'+file.name+'.bin'
+    vname = file.name+'.bin'
 
     ciphertext_chunks = []
 
@@ -47,15 +47,16 @@ async def encrypt(request, file: UploadedFile = File(...), passkey: PassKey = Fo
             break
         ciphertext_chunks.append(cipher.encrypt(chunk))
 
-    with open(vname, 'wb') as file_out:
+    with tempfile.NamedTemporaryFile() as file_out:
         file_out.write(nonce)
         file_out.write(cipher.digest())
         for chunk in ciphertext_chunks:
             file_out.write(chunk)
 
-    f = open(vname, 'rb')
-    response = FileResponse(f, content_type='application/octet-stream')
-    return response
+        f = open(file_out.name, 'rb')
+        response = FileResponse(f, content_type='application/octet-stream')
+        response['Content-Disposition'] = f'attachment; filename="{vname}"'
+        return response
 
 
 
@@ -63,7 +64,7 @@ async def encrypt(request, file: UploadedFile = File(...), passkey: PassKey = Fo
 async def decrypt(request, file: UploadedFile = File(...), namekey: NameKey = Form(...)):
     key = namekey.key.encode()
     # name file video decrypt
-    nvideo = './videos/'+namekey.name+'.mp4'
+    nvideo = namekey.name+'.mp4'
 
     nonce = file.read(16)
     tag = file.read(16)
@@ -81,10 +82,11 @@ async def decrypt(request, file: UploadedFile = File(...), namekey: NameKey = Fo
     except ValueError:
         return {'error': 'incorrect key'}
 
-    with open(nvideo, 'wb') as file_out:
+    with tempfile.NamedTemporaryFile() as file_out:
         for chunk in plaintext_chunks:
             file_out.write(chunk)
 
-    f = open(nvideo, 'rb')
-    response = FileResponse(f, content_type='application/octet-stream')
-    return response
+        f = open(file_out.name, 'rb')
+        response = FileResponse(f, content_type='application/octet-stream')
+        response['Content-Disposition'] = f'attachment; filename="{nvideo}"'
+        return response
