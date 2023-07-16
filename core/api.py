@@ -60,31 +60,31 @@ async def encrypt(request, file: UploadedFile = File(...), passkey: PassKey = Fo
 
 
 @api.post('decrypt', auth=AuthBearer())
-async def decrypt(request, files: List[UploadedFile] = File(...), namekey: NameKey = Form(...)):
+async def decrypt(request, file: UploadedFile = File(...), namekey: NameKey = Form(...)):
     key = namekey.key.encode()
     # name file video decrypt
     nvideo = './videos/'+namekey.name+'.mp4'
-    # get nonce end tag in key.bin
-    nonce, tag = [ files[1].read(x) for x in (16, 16) ]
 
-    # Open a new file in binary mode for writing
-    cipher = AES.new(key, AES.MODE_EAX, nonce)
+    nonce = file.read(16)
+    tag = file.read(16)
+    cipher = AES.new(key, AES.MODE_EAX, nonce=nonce)
+    plaintext_chunks = []
 
-    with open(nvideo, 'wb') as f:
-        while True:
-            chunk = files[0].read(1048576)
-            if not chunk:
-                break
-            f.write(cipher.decrypt(chunk))
+    while True:
+        chunk = file.read(1048576)
+        if not chunk:
+            break
+        plaintext_chunks.append(cipher.decrypt(chunk))
+
     try:
         cipher.verify(tag)
     except ValueError:
         return {'error': 'incorrect key'}
 
-    """data = cipher.decrypt_and_verify(ciphertext, tag)
-    with open(name+'.mp4', 'wb') as f:
-        f.write(data) """
-    # Open the decrypted file and return it with a FileResponse
+    with open(nvideo, 'wb') as file_out:
+        for chunk in plaintext_chunks:
+            file_out.write(chunk)
+
     f = open(nvideo, 'rb')
     response = FileResponse(f, content_type='application/octet-stream')
     return response
