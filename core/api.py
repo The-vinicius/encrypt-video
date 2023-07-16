@@ -33,29 +33,27 @@ async def encrypt(request, file: UploadedFile = File(...), passkey: PassKey = Fo
     key = passkey.key.encode()
     # name files
     vname = './encrypt/'+file.name+'.bin'
-    kname = './encrypt/key.bin'
-    zname = './zips/'+file.name+'.zip'
+
+    ciphertext_chunks = []
 
     # Create a Cipher object using the key
     cipher = AES.new(key, AES.MODE_EAX)
-    with open(vname, 'wb') as f:
-        while True:
-            chunk = file.read(1048576)
-            if not chunk:
-                break
-            f.write(cipher.encrypt(chunk))
+    nonce = cipher.nonce
 
-    with open(kname, 'wb') as f:
-        [f.write(x) for x in (cipher.nonce, cipher.digest())]
+    # encrypt video in chunks of bytes
+    while True:
+        chunk = file.read(1048576)
+        if not chunk:
+            break
+        ciphertext_chunks.append(cipher.encrypt(chunk))
 
-    files = [vname, kname]
-    # Create the ZIP file
-    with zipfile.ZipFile(zname, 'w') as myzip:
-        for f in files:
-            myzip.write(f)
+    with open(vname, 'wb') as file_out:
+        file_out.write(nonce)
+        file_out.write(cipher.digest())
+        for chunk in ciphertext_chunks:
+            file_out.write(chunk)
 
-    f = open(zname, 'rb')
-
+    f = open(vname, 'rb')
     response = FileResponse(f, content_type='application/octet-stream')
     return response
 
