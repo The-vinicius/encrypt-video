@@ -2,6 +2,12 @@
 - Encrypt files  with python lib pycryptodome.
 - Django-Ninja, encrypting mp4 files with symmetric key.
 
+
+## Environment Variables
+- create a file called .env, add this line:
+```KEY=your_secretkey```
+
+
 ## Install Dependencies
 ```pip install -r requirements.txt```
 
@@ -10,20 +16,26 @@
 ```uvicorn core.asgi:application --reload```
 
 ## EndPoints
-- Using the **post** method to send the mp4 file and the password (size 16). A zip file containing the encrypted file and the verification key (a 32 bytes file) is returned.
+- Using the **post** method to send the mp4 file and the password (size 16). returns an encrypted .bin file.
 **`http://localhost:8000/api/encrypt`**
 
 
-- **decrypt file**, Unzip the file and make a post, attaching the encrypted file and the key.bin (in that order), along with the password and the name of the mp4 file.
+- **decrypt file**, Using the **post** method to send the encrypted file with the key. returns the decrypted video.
 **`http://localhost:8000/api/decrypt`**
 
 
 ## Docs openapi
 
+**AUTH**
+- authenticate with your secretkey
+---
+![encryt](docs/auth.png)
+---
+
 **ENCRYPT**
 ---
 ![encryt](docs/encrypt.png)
-![encryt zip](docs/zip.png)
+![encryt zip](docs/file.png)
 ---
 **DECRYPT**
 ---
